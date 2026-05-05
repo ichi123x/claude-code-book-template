@@ -1,3 +1,12 @@
+---
+description: タスク管理アプリのAPI・データモデル・フロントエンド状態。server.js または todo.html を編集するときに参照する。
+globs:
+  - "server.js"
+  - "todo.html"
+  - "tasks.db"
+alwaysApply: false
+---
+
 # タスク管理アプリ
 
 ## ファイル

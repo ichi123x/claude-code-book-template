@@ -1,3 +1,11 @@
+---
+description: ブロック崩しゲームのアーキテクチャと仕様。index.html または main.js を編集するときに参照する。
+globs:
+  - "index.html"
+  - "main.js"
+alwaysApply: false
+---
+
 # ブロック崩しゲーム
 
 ## ファイル
