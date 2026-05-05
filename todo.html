@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>タスク管理</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #f0f2f5;
+      min-height: 100vh;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      justify-content: center;
+      padding: 40px 16px;
+    }
+    #app {
+      width: 100%;
+      max-width: 520px;
+    }
+    h1 {
+      font-size: 1.8rem;
+      color: #1a1a2e;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+    .add-form {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .add-form input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .add-form input:focus { border-color: #4444aa; }
+    .add-form button {
+      padding: 10px 18px;
+      background: #4444aa;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .add-form button:hover { background: #333388; }
+    .filters {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .filters button {
+      flex: 1;
+      padding: 7px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      background: white;
+      color: #555;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filters button.active {
+      border-color: #4444aa;
+      background: #4444aa;
+      color: white;
+    }
+    .priority-filters {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .priority-filters button {
+      flex: 1;
+      padding: 7px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      background: white;
+      color: #555;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .priority-filters button.active-all   { border-color: #4444aa; background: #4444aa; color: white; }
+    .priority-filters button.active-high  { border-color: #c0392b; background: #ffe0e0; color: #c0392b; }
+    .priority-filters button.active-medium{ border-color: #856404; background: #fff3cd; color: #856404; }
+    .priority-filters button.active-low   { border-color: #2c4a99; background: #e0eaff; color: #2c4a99; }
+    .task-list { list-style: none; }
+    .task-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: white;
+      padding: 14px 16px;
+      border-radius: 10px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      transition: opacity 0.2s;
+    }
+    .task-item.done { opacity: 0.55; }
+    .task-item input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      accent-color: #4444aa;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .task-label {
+      flex: 1;
+      font-size: 1rem;
+      color: #222;
+      word-break: break-word;
+    }
+    .task-item.done .task-label {
+      text-decoration: line-through;
+      color: #999;
+    }
+    .delete-btn {
+      background: none;
+      border: none;
+      color: #ccc;
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: color 0.2s;
+      flex-shrink: 0;
+    }
+    .delete-btn:hover { color: #e05555; }
+    .edit-input {
+      flex: 1;
+      font-size: 1rem;
+      padding: 2px 6px;
+      border: 2px solid #4444aa;
+      border-radius: 6px;
+      outline: none;
+    }
+    .priority-select {
+      padding: 10px 8px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      background: white;
+      cursor: pointer;
+      outline: none;
+      flex-shrink: 0;
+    }
+    .priority-badge {
+      flex-shrink: 0;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      border: none;
+      white-space: nowrap;
+    }
+    .priority-badge.high   { background: #ffe0e0; color: #c0392b; }
+    .priority-badge.medium { background: #fff3cd; color: #856404; }
+    .priority-badge.low    { background: #e0eaff; color: #2c4a99; }
+    .empty {
+      text-align: center;
+      color: #aaa;
+      padding: 40px 0;
+      font-size: 0.95rem;
+    }
+    .summary {
+      text-align: center;
+      font-size: 0.85rem;
+      color: #888;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script type="text/babel">
+    const { useState, useMemo, useEffect, useRef } = React;
+
+    const FILTERS = ['すべて', '未完了', '完了'];
+    const PRIORITY_FILTERS = [
+      { value: 'all',    label: 'すべて' },
+      { value: 'high',   label: '高' },
+      { value: 'medium', label: '中' },
+      { value: 'low',    label: '低' },
+    ];
+    const PRIORITIES = [
+      { value: 'high',   label: '高' },
+      { value: 'medium', label: '中' },
+      { value: 'low',    label: '低' },
+    ];
+    const nextPriority = { high: 'medium', medium: 'low', low: 'high' };
+
+    function App() {
+      const [tasks, setTasks] = useState([]);
+      const [input, setInput] = useState('');
+      const [priority, setPriority] = useState('medium');
+      const [filter, setFilter] = useState('すべて');
+      const [priorityFilter, setPriorityFilter] = useState('all');
+      const [editingId, setEditingId] = useState(null);
+      const [editText, setEditText] = useState('');
+
+      useEffect(() => {
+        fetch('/api/tasks')
+          .then(r => r.json())
+          .then(setTasks);
+      }, []);
+
+      const addTask = async () => {
+        const text = input.trim();
+        if (!text) return;
+        const res = await fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, priority }),
+        });
+        const task = await res.json();
+        setTasks(prev => [task, ...prev]);
+        setInput('');
+      };
+
+      const cyclePriority = async (task) => {
+        const next = nextPriority[task.priority] || 'medium';
+        const res = await fetch(`/api/tasks/${task.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ priority: next }),
+        });
+        const updated = await res.json();
+        setTasks(prev => prev.map(t => t.id === task.id ? updated : t));
+      };
+
+      const toggleTask = async (id) => {
+        const task = tasks.find(t => t.id === id);
+        const res = await fetch(`/api/tasks/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ done: !task.done }),
+        });
+        const updated = await res.json();
+        setTasks(prev => prev.map(t => t.id === id ? updated : t));
+      };
+
+      const deleteTask = async (id) => {
+        await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+        setTasks(prev => prev.filter(t => t.id !== id));
+      };
+
+      const startEdit = (task) => {
+        setEditingId(task.id);
+        setEditText(task.text);
+      };
+
+      const saveEdit = async (id) => {
+        const text = editText.trim();
+        if (!text) { setEditingId(null); return; }
+        const res = await fetch(`/api/tasks/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        const updated = await res.json();
+        setTasks(prev => prev.map(t => t.id === id ? updated : t));
+        setEditingId(null);
+      };
+
+      const handleKeyDown = (e) => {
+        if (e.key === 'Enter') addTask();
+      };
+
+      const filtered = useMemo(() => {
+        let result = tasks;
+        if (filter === '未完了') result = result.filter(t => !t.done);
+        else if (filter === '完了') result = result.filter(t => t.done);
+        if (priorityFilter !== 'all') result = result.filter(t => (t.priority || 'medium') === priorityFilter);
+        return result;
+      }, [tasks, filter, priorityFilter]);
+
+      const doneCount = tasks.filter(t => t.done).length;
+
+      return (
+        <>
+          <h1>タスク管理</h1>
+
+          <div className="add-form">
+            <input
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="新しいタスクを入力..."
+            />
+            <select className="priority-select" value={priority} onChange={e => setPriority(e.target.value)}>
+              {PRIORITIES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+            </select>
+            <button onClick={addTask}>追加</button>
+          </div>
+
+          <div className="filters">
+            {FILTERS.map(f => (
+              <button
+                key={f}
+                className={filter === f ? 'active' : ''}
+                onClick={() => setFilter(f)}
+              >{f}</button>
+            ))}
+          </div>
+
+          <div className="priority-filters">
+            {PRIORITY_FILTERS.map(p => (
+              <button
+                key={p.value}
+                className={priorityFilter === p.value ? `active-${p.value}` : ''}
+                onClick={() => setPriorityFilter(p.value)}
+              >{p.label}</button>
+            ))}
+          </div>
+
+          <ul className="task-list">
+            {filtered.length === 0 ? (
+              <li className="empty">タスクがありません</li>
+            ) : filtered.map(task => (
+              <li key={task.id} className={`task-item${task.done ? ' done' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={task.done}
+                  onChange={() => toggleTask(task.id)}
+                />
+                {editingId === task.id ? (
+                  <input
+                    className="edit-input"
+                    value={editText}
+                    onChange={e => setEditText(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') saveEdit(task.id);
+                      if (e.key === 'Escape') setEditingId(null);
+                    }}
+                    onBlur={() => saveEdit(task.id)}
+                    autoFocus
+                  />
+                ) : (
+                  <span className="task-label" onDoubleClick={() => startEdit(task)}>{task.text}</span>
+                )}
+                <button
+                  className={`priority-badge ${task.priority || 'medium'}`}
+                  onClick={() => cyclePriority(task)}
+                  title="クリックで優先度を変更"
+                >
+                  {PRIORITIES.find(p => p.value === (task.priority || 'medium'))?.label}
+                </button>
+                <button className="delete-btn" onClick={() => deleteTask(task.id)}>✕</button>
+              </li>
+            ))}
+          </ul>
+
+          {tasks.length > 0 && (
+            <p className="summary">{doneCount} / {tasks.length} 件完了</p>
+          )}
+        </>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('app')).render(<App />);
+  </script>
+</body>
+</html>
